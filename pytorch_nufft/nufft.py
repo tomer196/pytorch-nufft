@@ -2,11 +2,11 @@ from pytorch_nufft import util
 import pytorch_nufft.interp as interp
 import numpy
 import torch
-from data import transforms
+import pytorch_nufft.transforms as transforms
+import scipy
 
-
-def nufft(input, coord, oversamp=1.25, width=4.0, n=128, device='cuda'):
-    ndim = coord.shape[-1]
+def nufft(input, coord, ndim=2,oversamp=1.25, width=4.0, n=128, device='cuda'):
+    # ndim = coord.shape[-1]
     beta = numpy.pi * (((width / oversamp) * (oversamp - 0.5)) ** 2 - 0.8) ** 0.5
     os_shape = _get_oversamp_shape(input.shape, ndim, oversamp)
 
@@ -20,18 +20,21 @@ def nufft(input, coord, oversamp=1.25, width=4.0, n=128, device='cuda'):
     output = util.resize(output, os_shape, device=device)
 
     # FFT
-    output = transforms.rfft2(output)
+    if ndim==2:
+        output = transforms.rfft2(output)
+    elif ndim==3:
+        output = transforms.rfft3(output)
 
     # Interpolate
     coord = _scale_coord(coord, input.shape, oversamp, device)
     kernel = _get_kaiser_bessel_kernel(n, width, beta, coord.dtype, device)
-    output = interp.interpolate(output, width, kernel, coord, device)
+    output = interp.interpolate(output, width, kernel, coord, ndim,device)
 
     return output
 
 
-def nufft_adjoint(input, coord, oshape, oversamp=1.25, width=4.0, n=128, device='cuda'):
-    ndim = coord.shape[-1]
+def nufft_adjoint(input, coord, oshape, ndim=2, oversamp=1.25, width=4.0, n=128, device='cuda'):
+    # ndim = coord.shape[-1]
     beta = numpy.pi * (((width / oversamp) * (oversamp - 0.5)) ** 2 - 0.8) ** 0.5
     oshape = list(oshape)
 
@@ -44,10 +47,13 @@ def nufft_adjoint(input, coord, oshape, oversamp=1.25, width=4.0, n=128, device=
     os_shape2[1] = 2
     coord = _scale_coord(coord, oshape2, oversamp, device)
     kernel = _get_kaiser_bessel_kernel(n, width, beta, coord.dtype, device)
-    output = interp.gridding(input, os_shape2, width, kernel, coord, device)
+    output = interp.gridding(input, os_shape2, width, kernel, coord, ndim, device)
 
     # IFFT
-    output = transforms.ifft2(output)
+    if ndim==2:
+        output = transforms.ifft2(output)
+    elif ndim==3:
+        output = transforms.ifft3(output)
 
     # Crop
     output = util.resize(output, oshape2, device=device)
@@ -57,7 +63,11 @@ def nufft_adjoint(input, coord, oshape, oversamp=1.25, width=4.0, n=128, device=
     # Apodize
     output = _apodize(output, ndim, oversamp, width, beta, device)
 
-    output = output[:, 0, :, :]
+    if ndim == 2:
+        output = output[:, 0, :, :]
+    elif ndim == 3:
+        output = output[:, 0, :, :,:]
+
     return output
 
 

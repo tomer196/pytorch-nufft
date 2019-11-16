@@ -1,7 +1,7 @@
 import os
 os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 import sys
-sys.path.insert(0, '/home/aditomer/PILOT')
+sys.path.insert(0, '/home/tomerweiss/pytorch-nufft')
 import numpy as np
 import matplotlib.pyplot as plt
 import cv2
@@ -9,12 +9,12 @@ import torch
 import pytorch_nufft.nufft as nufft
 import pytorch_nufft.interp as interp
 
-from data import transforms
+import pytorch_nufft.transforms as transforms
 
-device='cu'
+device='cpu'
 # create trajectory
 res=256
-decimation_rate=12
+decimation_rate=4
 dt=1e-2
 num_measurements=res**2//decimation_rate
 x = torch.zeros(num_measurements, 2)

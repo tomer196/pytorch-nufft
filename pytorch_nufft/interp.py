@@ -3,7 +3,7 @@ import torch
 import numpy
 from pytorch_nufft import util
 
-def interpolate(input, width, kernel, coord, device):
+def interpolate(input, width, kernel, coord, ndim,device):
     ndim = coord.shape[-1]
 
     batch_shape = input.shape[:-ndim]
@@ -16,7 +16,10 @@ def interpolate(input, width, kernel, coord, device):
     coord = coord.reshape([npts, ndim])
     output = torch.zeros([batch_size, npts], dtype=input.dtype, device=device)
 
-    output=_interpolate2(output, input, width, kernel, coord)
+    if ndim==2:
+        output=_interpolate2(output, input, width, kernel, coord)
+    elif ndim==3:
+        output=_interpolate3(output, input, width, kernel, coord)
 
     return output.reshape(batch_shape + pts_shape)
 
@@ -64,7 +67,32 @@ def _interpolate2(output, input, width, kernel, coord):
 
     return output
 
-def gridding(input, shape, width, kernel, coord,device):
+def _interpolate3(output, input, width, kernel, coord):
+    batch_size, nz, ny, nx = input.shape
+
+    kx, ky, kz = coord[:, -1], coord[:, -2], coord[:, -3]
+
+    x0, y0, z0 = (torch.ceil(kx - width / 2),
+                  torch.ceil(ky - width / 2),
+                  torch.ceil(kz - width / 2))
+
+    for z in range(int(width) + 1):
+        wz = lin_interpolate(kernel, torch.abs(z0 + z - kz) / (width / 2))
+
+        for y in range(int(width) + 1):
+            wy = wz * lin_interpolate(kernel, torch.abs(y0 + y - ky) / (width / 2))
+
+            for x in range(int(width) + 1):
+                w = wy * lin_interpolate(kernel, torch.abs(x0 + x - kx) / (width / 2))
+
+                yy = torch.fmod(y0 + y, ny).long()
+                xx = torch.fmod(x0 + x, nx).long()
+                zz = torch.fmod(z0 + z, nz).long()
+                output[:, :] = output[:, :] + w * input[:, zz, yy, xx]
+
+    return output
+
+def gridding(input, shape, width, kernel, coord, ndim, device):
     ndim = coord.shape[-1]
 
     batch_shape = shape[:-ndim]
@@ -77,7 +105,10 @@ def gridding(input, shape, width, kernel, coord,device):
     coord = coord.reshape([npts, ndim])
     output = torch.zeros([batch_size] + list(shape[-ndim:]), dtype=input.dtype, device=device)
 
-    output=_gridding2(output, input, width, kernel, coord)
+    if ndim == 2:
+        output=_gridding2(output, input, width, kernel, coord)
+    elif ndim == 3:
+        output=_gridding3(output, input, width, kernel, coord)
 
     return output.reshape(shape)
 
@@ -98,5 +129,30 @@ def _gridding2(output, input, width, kernel, coord):
             yy=torch.fmod(y0+y,ny).long()
             xx=torch.fmod(x0+x,nx).long()
             output[:, yy, xx] = output[:, yy, xx] + w * input[:, :]
+
+    return output
+
+def _gridding3(output, input, width, kernel, coord):
+    batch_size, nz, ny, nx = output.shape
+
+    kx, ky, kz = coord[:, -1], coord[:, -2], coord[:, -3]
+
+    x0, y0, z0 = (torch.ceil(kx - width / 2),
+                  torch.ceil(ky - width / 2),
+                  torch.ceil(kz - width / 2))
+
+    for z in range(int(width) + 1):
+        wz = lin_interpolate(kernel, torch.abs(z0 + z - kz) / (width / 2))
+
+        for y in range(int(width) + 1):
+            wy = wz * lin_interpolate(kernel, torch.abs(y0 + y - ky) / (width / 2))
+
+            for x in range(int(width) + 1):
+                w = wy * lin_interpolate(kernel, torch.abs(x0 + x - kx) / (width / 2))
+
+                yy = torch.fmod(y0 + y, ny).long()
+                xx = torch.fmod(x0 + x, nx).long()
+                zz = torch.fmod(z0 + z, nz).long()
+                output[:, zz, yy, xx] = output[:, zz, yy, xx] + w * input[:, :]
 
     return output
