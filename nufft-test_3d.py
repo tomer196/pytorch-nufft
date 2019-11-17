@@ -21,8 +21,8 @@ z=torch.arange(-18,18,36/x.shape[0])
 z=z.unsqueeze(1)
 x=torch.cat((z,x),dim=1)
 
-x=np.array(np.meshgrid(np.arange(-18,19)-0.5,np.arange(-160,160),np.arange(-160,160))).T.reshape(-1,3) # trajectory which cover the all kspace
-x=torch.tensor(x).float()
+# x=np.array(np.meshgrid(np.arange(-18,19)-0.5,np.arange(-160,160),np.arange(-160,160))).T.reshape(-1,3) # trajectory which cover the all kspace
+# x=torch.tensor(x).float()
 
 # fig = plt.figure()
 # ax = fig.add_subplot(111, projection='3d')
@@ -33,16 +33,9 @@ x=x.to(device)
 
 # Get data
 with h5py.File('/home/tomerweiss/Datasets/singlecoil_train/file1001029.h5', 'r') as data:
-    kspace = data['kspace'][:]
+    # kspace = data['kspace'][:]
     img = data['reconstruction_esc'][:]
 
-# kspace = transforms.to_tensor(kspace).to(device).permute(3,0,1,2).unsqueeze(0)
-# img=transforms.irfft3(kspace)
-# img = transforms.center_crop(img,(320,320))
-# plt.figure()
-# plt.imshow(img[0,0,18,:,:].detach().cpu().numpy(), cmap='gray')
-# plt.show()
-# kspace=transforms.rfft3(img)
 
 img = img.reshape(1,1,37,320,320)
 img = torch.tensor(img).to(device)
@@ -52,15 +45,10 @@ plt.imshow(img[0,0,18,:,:].detach().cpu().numpy(), cmap='gray')
 plt.show()
 
 # NUFFT Forward
-# img=transforms.irfft3(kspace)
+# ksp = nufft.nufft(img, x, ndim=3, device=device)
 
-ksp = nufft.nufft(img, x, ndim=3, device=device)
-
-
-# kspace=torch.ones(1,1,30,30,30)
-# kspace[:,:,:,:,15]=5
-# x=torch.tensor([[1,1,0],[0,1,1],[1,0,1],[-1,0,0]]).float()
-# ksp=interp.bilinear_interpolate_torch_gridsample_3d(kspace,x)
+kspace=transforms.rfft3(img)
+ksp=interp.bilinear_interpolate_torch_gridsample_3d(kspace,x)
 
 # NUFFT Adjoint
 img_est = nufft.nufft_adjoint(ksp,x,original_shape, ndim=3,device=device)
