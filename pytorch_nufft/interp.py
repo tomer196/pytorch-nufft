@@ -27,11 +27,21 @@ def interpolate(input, width, kernel, coord, ndim,device):
 def bilinear_interpolate_torch_gridsample(input, coord):
     coord=coord.unsqueeze(0).unsqueeze(0)
     tmp=torch.zeros_like(coord)
-    tmp[:, :, :, 0] = ((coord[:, :, :, 1]+input.shape[2]/2) / (input.shape[2]-1))  # normalize to between  -1 and 1
-    tmp[:, :, :, 1] = ((coord[:, :, :, 0]+input.shape[2]/2) / (input.shape[2]-1)) # normalize to between  -1 and 1
+    tmp[:, :, :, 0] = ((coord[:, :, :, 1]+input.shape[2]/2) / (input.shape[2]-1))  # normalize to between  0 and 1
+    tmp[:, :, :, 1] = ((coord[:, :, :, 0]+input.shape[2]/2) / (input.shape[2]-1)) # normalize to between  0 and 1
     tmp = tmp * 2 - 1  # normalize to between -1 and 1
     tmp=tmp.expand(input.shape[0],-1,-1,-1)
     return torch.nn.functional.grid_sample(input, tmp).squeeze(2)
+
+def bilinear_interpolate_torch_gridsample_3d(input, coord):
+    coord=coord.unsqueeze(0).unsqueeze(0).unsqueeze(0)
+    tmp=torch.zeros_like(coord)
+    tmp[:, :, :,:, 0] = ((coord[:, :, :,:, 2]+input.shape[3]/2) / (input.shape[3]-1))  # normalize to between  0 and 1
+    tmp[:, :, :,:, 1] = ((coord[:, :, :,:, 1]+input.shape[3]/2) / (input.shape[3]-1)) # normalize to between  0 and 1
+    tmp[:, :, :,:, 2] = ((coord[:, :, :,:, 0]+input.shape[2]/2) / (input.shape[2]-1)) # normalize to between  0 and 1
+    tmp = tmp * 2 - 1  # normalize to between -1 and 1
+    tmp=tmp.expand(input.shape[0],-1,-1,-1,-1)
+    return torch.nn.functional.grid_sample(input, tmp).squeeze(2).squeeze(2)
 
 def lin_interpolate(kernel, x):
     mask=torch.lt(x,1).float()

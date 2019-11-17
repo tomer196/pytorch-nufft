@@ -31,7 +31,9 @@ img = torch.tensor(img).to(device)
 original_shape=img.shape
 
 # NUFFT Forward
-ksp = nufft.nufft(img, x, device=device)
+# ksp = nufft.nufft(img, x, device=device)
+ksp=transforms.rfft2(img)
+ksp=interp.bilinear_interpolate_torch_gridsample(ksp,x)
 
 # NUFFT Adjoint
 img_est = nufft.nufft_adjoint(ksp,x,original_shape,device=device)

@@ -41,6 +41,17 @@ def irfft2(data):
     data = fftshift(data, dim=(-2, -1))
     return data
 
+def irfft3(data):
+    data=data.unsqueeze(1)
+    data = data.permute(0, 1, 3, 4, 5, 2)
+    # data=data.reshape(1,1,320,320,2)
+    assert data.size(-1) == 2
+    data = ifftshift(data, dim=(-4,-3, -2))
+    data = torch.irfft(data, 2, normalized=False,onesided=False)
+    data = fftshift(data, dim=(-3,-2, -1))
+    return data
+
+
 def irfft2_regular(data):
     assert data.size(-1) == 2
     data = ifftshift(data, dim=(-3, -2))
